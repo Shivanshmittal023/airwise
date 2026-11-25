@@ -14,6 +14,12 @@ Every recommendation explains **why** it matters. Google Gemini then turns the p
 
 ---
 
+## Screenshots
+
+| Household form | Personalised plan |
+|---|---|
+| ![AirWise home page with the four-step household form](docs/screenshot-form.png) | ![Delhi plan showing an AQI gauge of 186, a 9.3 times WHO limit stat and the assistant briefing](docs/screenshot-plan.png) |
+
 ## Chosen vertical
 
 **Challenge 06: Urban Air Quality Assistant.** The challenge asks for help with severe winter smog: low-emission routines, indoor air hacks and sustainable alternatives, tailored to location and lifestyle, with a clear explanation of the direct impact of each choice.
