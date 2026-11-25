@@ -200,6 +200,16 @@ describe('createAssistant', () => {
     assert.doesNotMatch(warnings[0], /bad"/);
   });
 
+  it('never returns a truncated answer', async () => {
+    const fetchImpl = async () => jsonResponse({
+      candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'Today the air is roughly like smoking' }] } }],
+    });
+    const assistant = createAssistant({ apiKey: 'k', models: ['a', 'b'], fetchImpl, logger: silentLogger });
+    const result = await assistant.summarize(input);
+    assert.equal(result.source, 'rules');
+    assert.doesNotMatch(result.text, /roughly like smoking$/);
+  });
+
   it('gives a helpful generic answer to unrelated questions without AI', async () => {
     const assistant = createAssistant({ apiKey: '' });
     const result = await assistant.answer({ ...input, question: 'Tell me a joke' });

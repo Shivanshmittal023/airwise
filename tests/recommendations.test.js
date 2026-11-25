@@ -102,6 +102,16 @@ describe('buildPlan – clean day, low-emission household', () => {
   });
 });
 
+describe('buildPlan – moderate air, sensitive household', () => {
+  const plan = buildPlan(makeAir({ aqi: 55, pm25: 15.8 }), makeProfile({ sensitivities: ['children'] }));
+
+  it('raises personal risk but does not over-prescribe masks', () => {
+    assert.equal(plan.risk.personal.id, 'elevated');
+    assert.equal(find(plan.routine, 'mask'), undefined);
+    assert.equal(find(plan.routine, 'best-window').priority, 'medium');
+  });
+});
+
 describe('buildPlan – solid-fuel cooking', () => {
   it('flags biomass cooking as a high-priority indoor risk and switch', () => {
     const plan = buildPlan(makeAir({ aqi: 90, pm25: 30 }), makeProfile({ cooking: 'biomass' }));

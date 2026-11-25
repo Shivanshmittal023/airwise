@@ -148,7 +148,7 @@ export function buildRoutine(profile, risk, windows) {
   if (best) {
     items.push({
       id: 'best-window',
-      priority: p >= LEVEL.USG ? 'high' : 'medium',
+      priority: risk.category.index >= LEVEL.USG ? 'high' : 'medium',
       title: `Plan outdoor time for ${formatWindow(best)}`,
       detail: `Forecast AQI averages ${best.avgAqi} (${best.label}) then — the cleanest daytime slot in the next 24 hours. Schedule school runs, errands and walks here.`,
       why: 'Winter smog is trapped near the ground by temperature inversions, so levels swing a lot through the day; timing alone can cut your exposure.',
@@ -167,7 +167,9 @@ export function buildRoutine(profile, risk, windows) {
 
   items.push(exerciseRoutine(profile, risk, best), commuteRoutine(profile, risk));
 
-  if (p >= LEVEL.USG) {
+  // Masks only once outdoor air itself is unhealthy for sensitive groups (AQI > 100);
+  // a sensitive household raises the urgency, not the threshold.
+  if (risk.category.index >= LEVEL.USG) {
     const kids = has('children') ? ' For children use certified child-size masks; masks are not advised for children under 2.' : '';
     items.push({
       id: 'mask',

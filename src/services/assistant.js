@@ -8,6 +8,8 @@ import { SYSTEM_INSTRUCTION, buildContext, buildQuestionPrompt, buildSummaryProm
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+const MAX_OUTPUT_TOKENS = 4096;
+
 /** Statuses where another model may succeed: retired/unknown model, rate limit, overload. */
 const RETRYABLE_STATUSES = new Set([404, 429, 500, 503]);
 
@@ -60,7 +62,9 @@ export function createAssistant({
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+          // Generous budget: newer Gemini models spend output tokens on internal
+          // "thinking" before the visible answer. The prompt itself caps length.
+          generationConfig: { temperature: 0.4, maxOutputTokens: MAX_OUTPUT_TOKENS },
         }),
       });
     } catch (error) {
@@ -74,7 +78,12 @@ export function createAssistant({
     }
 
     const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts
+    const candidate = data?.candidates?.[0];
+    // Never show a half-finished answer (token limit, safety stop, etc.).
+    if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+      throw new GeminiError(`${modelId} stopped early (${candidate.finishReason})`, { retryable: true });
+    }
+    const text = candidate?.content?.parts
       ?.map((part) => part.text)
       .filter((part) => typeof part === 'string')
       .join('');
