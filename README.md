@@ -1,5 +1,9 @@
 # AirWise: Urban Air Quality Assistant
 
+[![tests](https://github.com/Shivanshmittal023/airwise/actions/workflows/test.yml/badge.svg)](https://github.com/Shivanshmittal023/airwise/actions/workflows/test.yml)
+
+**Live demo:** https://airwise-202957888978.asia-south1.run.app
+
 AirWise is a GenAI-powered assistant for families and communities living through winter smog and urban air pollution. You give it your location and a few details about your household. It looks up live air quality and the 24-hour forecast, then builds a personalised plan with three parts:
 
 - **A low-emission daily routine.** It tells you when to go outside, how to commute and exercise, and how to protect children and other sensitive family members.
@@ -59,7 +63,7 @@ Each sustainable switch includes:
 - A **tree equivalent**: years of CO₂ uptake by mature trees, at about 21 kg/tree/year
 - An honest note when a switch *increases* CO₂ but cuts PM2.5 a lot. Example: biomass to induction on a coal-heavy grid.
 
-Exposure is also made concrete. AirWise converts PM2.5 into a **cigarette equivalent** using the Berkeley Earth rule of thumb, where 22 µg/m³ for 24 hours ≈ 1 cigarette.
+Exposure is also made concrete in two ways. AirWise converts PM2.5 into a **cigarette equivalent** using the Berkeley Earth rule of thumb, where 22 µg/m³ for 24 hours ≈ 1 cigarette. It also shows how many times over the **WHO 2021 daily PM2.5 guideline** (15 µg/m³) the air is. A **combined impact banner** adds up the best switch in each category (commute, heating, cooking) without double counting.
 
 ## How the solution works
 
@@ -128,7 +132,7 @@ src/services/             I/O adapters
   fallback.js             Deterministic briefing/answers
   cache.js                TTL + LRU cache with request de-duplication
 src/server/               HTTP layer (routing, security, static files, rate limiting)
-public/                   Accessible, framework-free frontend
+public/                   Accessible, framework-free frontend (format.js holds pure, unit-tested UI logic)
 tests/                    node:test suites for every layer
 ```
 
@@ -147,13 +151,14 @@ tests/                    node:test suites for every layer
   - Air data is cached with a TTL and LRU eviction, and concurrent requests for the same place share one upstream call.
   - Static assets are pre-gzipped and served with ETags and 304 responses.
   - The Gemini context is compact, which saves tokens, and every outbound call has a timeout.
-- **Testing.** 75 `node:test` tests cover AQI maths, impact maths, validation, forecast windows, decision rules, caching, the Open-Meteo client, the Gemini client and its fallbacks, prompt-injection hardening, and HTTP behaviour (status codes, headers, rate limiting, path traversal). GitHub Actions CI runs them on every push.
+- **Testing.** 87 `node:test` tests cover AQI maths, impact maths, validation, forecast windows, decision rules, the combined impact summary, frontend formatting helpers, caching, the Open-Meteo client, the Gemini client and its fallbacks, prompt-injection hardening, and HTTP behaviour (status codes, headers, rate limiting, path traversal). GitHub Actions CI runs them on every push.
 - **Accessibility.**
   - The page uses semantic landmarks, a skip link, and fieldsets with legends. Labels are linked to their hints and errors.
   - `aria-live` regions announce status changes, and focus moves to the results.
   - AQI colours meet WCAG AA contrast and are always paired with a text label.
   - The forecast chart has a text summary and a data-table alternative.
   - Touch targets are 44 px. The layout supports dark mode, reduced motion and forced colours.
+  - Household toggles are real checkboxes styled as pills, so keyboard and screen-reader behaviour is native. Icons are decorative (`aria-hidden`), and buttons announce their busy state with `aria-busy`.
 
 ## Assumptions
 

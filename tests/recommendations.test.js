@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { assessRisk, buildPlan } from '../src/engine/recommendations.js';
+import { assessRisk, buildPlan, summarizeImpact } from '../src/engine/recommendations.js';
 import { makeAir, makeProfile } from './fixtures.js';
 
 const ids = (items) => items.map((item) => item.id);
@@ -25,6 +25,7 @@ describe('assessRisk', () => {
     const risk = assessRisk(makeAir({ aqi: 180, pm25: 110 }), makeProfile());
     assert.equal(risk.cigarettes, 5);
     assert.match(risk.explanation, /5 cigarettes/);
+    assert.equal(risk.whoMultiple, 7.3, '110 µg/m³ vs the WHO 15 µg/m³ daily guideline');
   });
 });
 
@@ -117,5 +118,23 @@ describe('buildPlan – solid-fuel cooking', () => {
     const plan = buildPlan(makeAir({ aqi: 90, pm25: 30 }), makeProfile({ cooking: 'biomass' }));
     assert.equal(find(plan.indoor, 'cooking').priority, 'high');
     assert.ok(find(plan.alternatives, 'cooking-gas').impact.pm25GPerMonth > 0);
+  });
+});
+
+describe('summarizeImpact', () => {
+  it('sums the best switch per category without double counting', () => {
+    const plan = buildPlan(makeAir(), makeProfile({ commuteMode: 'car', commuteKm: 10, heating: 'coal', cooking: 'biomass' }));
+    const summary = plan.impactSummary;
+    assert.equal(summary.switches, 3);
+    const best = (category) => plan.alternatives
+      .filter((a) => a.category === category && a.impact)
+      .sort((a, b) => b.impact.pm25GPerMonth - a.impact.pm25GPerMonth || b.impact.co2KgPerMonth - a.impact.co2KgPerMonth)[0];
+    const expectedPm = ['commute', 'heating', 'cooking'].reduce((sum, c) => sum + best(c).impact.pm25GPerMonth, 0);
+    assert.ok(Math.abs(summary.pm25GPerMonth - expectedPm) < 0.2);
+  });
+
+  it('returns null when there is nothing to switch', () => {
+    assert.equal(summarizeImpact([{ id: 'no-burning', category: 'community', impact: null }]), null);
+    assert.equal(buildPlan(makeAir(), makeProfile()).impactSummary, null);
   });
 });

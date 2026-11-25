@@ -9,6 +9,7 @@ import {
   COMMUTE_FACTORS,
   COOKING_FACTORS,
   HEATING_FACTORS,
+  buildImpact,
   commuteSavings,
   cookingSavings,
   describeImpact,
@@ -32,6 +33,9 @@ const SENSITIVITY_LABELS = Object.freeze({
   pregnancy: 'a pregnant family member',
 });
 
+/** WHO 2021 air-quality guideline for 24-hour mean PM2.5 (µg/m³). */
+export const WHO_PM25_24H_GUIDELINE = 15;
+
 const PRIORITY_ORDER = Object.freeze({ high: 0, medium: 1, low: 2 });
 const byPriority = (a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
 
@@ -54,6 +58,7 @@ export function assessRisk(air, profile) {
   const bump = sensitiveGroups.length > 0 && category.index >= LEVEL.MODERATE ? 1 : 0;
   const personalIndex = Math.min(PERSONAL_RISK.length - 1, category.index + bump);
   const cigarettes = Number.isFinite(pm25) ? cigaretteEquivalent(pm25) : null;
+  const whoMultiple = Number.isFinite(pm25) ? Math.round((pm25 / WHO_PM25_24H_GUIDELINE) * 10) / 10 : null;
 
   const explanation = [`The US AQI is ${aqi} (${category.label}).`];
   if (cigarettes !== null && cigarettes >= 0.5) {
@@ -71,6 +76,7 @@ export function assessRisk(air, profile) {
     personal: { ...PERSONAL_RISK[personalIndex], index: personalIndex },
     sensitiveGroups,
     cigarettes,
+    whoMultiple,
     explanation: explanation.join(' '),
   };
 }
@@ -450,6 +456,33 @@ export function buildAlternatives(profile, risk) {
 }
 
 /**
+ * Combined potential impact: the single best switch per category (commute,
+ * heating, cooking), ranked by PM2.5 avoided then CO₂, summed. Picking one per
+ * category avoids double counting mutually exclusive options.
+ * @returns {{co2KgPerMonth: number, pm25GPerMonth: number, treesEquivalent: number, switches: number} | null}
+ */
+export function summarizeImpact(alternatives) {
+  const bestByCategory = new Map();
+  for (const item of alternatives) {
+    if (!item.impact) continue;
+    const current = bestByCategory.get(item.category);
+    const better = !current
+      || item.impact.pm25GPerMonth > current.impact.pm25GPerMonth
+      || (item.impact.pm25GPerMonth === current.impact.pm25GPerMonth && item.impact.co2KgPerMonth > current.impact.co2KgPerMonth);
+    if (better) bestByCategory.set(item.category, item);
+  }
+  if (bestByCategory.size === 0) return null;
+
+  let co2 = 0;
+  let pm25 = 0;
+  for (const { impact } of bestByCategory.values()) {
+    co2 += impact.co2KgPerMonth;
+    pm25 += impact.pm25GPerMonth;
+  }
+  return { ...buildImpact(co2, pm25), switches: bestByCategory.size };
+}
+
+/**
  * Build the full plan.
  * @param {{current: {aqi: number, pm25: number|null, time: string}, hourly: {time: string, aqi: number}[]}} air
  * @param {object} profile validated profile
@@ -457,11 +490,13 @@ export function buildAlternatives(profile, risk) {
 export function buildPlan(air, profile) {
   const risk = assessRisk(air, profile);
   const windows = findCleanWindows(air.hourly, air.current.time);
+  const alternatives = buildAlternatives(profile, risk);
   return {
     risk,
     windows,
     routine: buildRoutine(profile, risk, windows),
     indoor: buildIndoorHacks(profile, risk, windows),
-    alternatives: buildAlternatives(profile, risk),
+    alternatives,
+    impactSummary: summarizeImpact(alternatives),
   };
 }

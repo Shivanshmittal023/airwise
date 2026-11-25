@@ -12,12 +12,16 @@ function topActions(plan, limit) {
 }
 
 export function fallbackSummary({ location, plan }) {
+  const { risk } = plan;
+  const exposure = risk.cigarettes >= 0.5 ? `, about ${risk.cigarettes} cigarettes' worth of PM2.5 over a day` : '';
   const lines = [
-    `${location.name}: ${plan.risk.explanation} Personal risk for your household: ${plan.risk.personal.label}.`,
-    ...topActions(plan, 3).map((item) => `• ${item.title} — ${item.why}`),
+    `${location.name} is at AQI ${risk.aqi} (${risk.category.label})${exposure}. Your household's risk today: ${risk.personal.label}.`,
+    '',
+    'Top actions:',
+    ...topActions(plan, 3).map((item) => `• ${item.title}. ${item.why}`),
   ];
   const bestSwitch = plan.alternatives.find((item) => item.impact);
-  if (bestSwitch) lines.push(`• ${bestSwitch.title}: ${bestSwitch.explanation}`);
+  if (bestSwitch) lines.push('', `Biggest switch: ${bestSwitch.title}. ${bestSwitch.explanation}`);
   return lines.join('\n');
 }
 

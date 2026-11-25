@@ -1,18 +1,21 @@
-/** Page controller: form handling, geolocation and result display. */
+/** Page controller: form handling, geolocation, loading states and result display. */
 import { askQuestion, fetchPlan } from './api.js';
-import { renderAir, renderForecast, renderPlanList, renderSummary } from './render.js';
+import { renderForecast, renderImpactSummary, renderOverview, renderPlanList, renderSummary } from './render.js';
 
-const form = document.getElementById('profile-form');
-const cityInput = document.getElementById('city');
-const cityError = document.getElementById('city-error');
-const locateBtn = document.getElementById('locate-btn');
-const submitBtn = document.getElementById('submit-btn');
-const status = document.getElementById('form-status');
-const results = document.getElementById('results');
-const askForm = document.getElementById('ask-form');
-const askBtn = document.getElementById('ask-btn');
-const questionInput = document.getElementById('question');
-const answer = document.getElementById('answer');
+const $ = (id) => document.getElementById(id);
+
+const form = $('profile-form');
+const cityInput = $('city');
+const cityError = $('city-error');
+const submitBtn = $('submit-btn');
+const status = $('form-status');
+const results = $('results');
+const askForm = $('ask-form');
+const askBtn = $('ask-btn');
+const questionInput = $('question');
+const answer = $('answer');
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** Rounded (~1 km) coordinates from the browser, if the user opted in. */
 let coords = null;
@@ -29,6 +32,12 @@ function setCityError(message) {
   cityError.hidden = !message;
   if (message) cityInput.setAttribute('aria-invalid', 'true');
   else cityInput.removeAttribute('aria-invalid');
+}
+
+function setLoading(button, loading) {
+  button.disabled = loading;
+  button.classList.toggle('is-loading', loading);
+  button.setAttribute('aria-busy', String(loading));
 }
 
 function readProfile() {
@@ -48,7 +57,7 @@ function readProfile() {
   return null;
 }
 
-locateBtn.addEventListener('click', () => {
+$('locate-btn').addEventListener('click', () => {
   if (!('geolocation' in navigator)) {
     setStatus('Location is not supported in this browser. Please type your city.', true);
     return;
@@ -67,6 +76,15 @@ locateBtn.addEventListener('click', () => {
   );
 });
 
+for (const chip of document.querySelectorAll('[data-city]')) {
+  chip.addEventListener('click', () => {
+    cityInput.value = chip.dataset.city;
+    coords = null;
+    setCityError('');
+    cityInput.focus();
+  });
+}
+
 cityInput.addEventListener('input', () => {
   if (cityInput.value.trim()) setCityError('');
 });
@@ -81,15 +99,15 @@ form.addEventListener('submit', async (event) => {
   }
 
   setCityError('');
-  submitBtn.disabled = true;
-  form.setAttribute('aria-busy', 'true');
+  setLoading(submitBtn, true);
   setStatus('Checking live air quality and building your plan…');
 
   try {
     const data = await fetchPlan(profile);
     lastProfile = profile;
-    renderAir(data);
+    renderOverview(data);
     renderForecast(data.air, data.plan.windows);
+    renderImpactSummary(data.plan.impactSummary);
     renderPlanList('routine', data.plan.routine);
     renderPlanList('indoor', data.plan.indoor);
     renderPlanList('alternatives', data.plan.alternatives);
@@ -97,26 +115,25 @@ form.addEventListener('submit', async (event) => {
     answer.textContent = '';
     results.hidden = false;
     setStatus('Your plan is ready.');
-    results.focus();
+    results.focus({ preventScroll: true });
+    results.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
   } catch (error) {
     setStatus(error.message, true);
   } finally {
-    submitBtn.disabled = false;
-    form.removeAttribute('aria-busy');
+    setLoading(submitBtn, false);
   }
 });
 
-askForm.addEventListener('submit', async (event) => {
+$('edit-link').addEventListener('click', (event) => {
   event.preventDefault();
-  const question = questionInput.value.trim();
-  if (question.length < 3) {
-    answer.textContent = 'Please type a question first.';
-    questionInput.focus();
-    return;
-  }
-  if (!lastProfile) return;
+  const heading = $('form-title');
+  heading.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+  heading.focus({ preventScroll: true });
+});
 
-  askBtn.disabled = true;
+async function ask(question) {
+  if (!lastProfile) return;
+  setLoading(askBtn, true);
   answer.textContent = 'Thinking…';
   try {
     const data = await askQuestion(lastProfile, question);
@@ -124,6 +141,29 @@ askForm.addEventListener('submit', async (event) => {
   } catch (error) {
     answer.textContent = error.message;
   } finally {
-    askBtn.disabled = false;
+    setLoading(askBtn, false);
   }
+}
+
+for (const chip of document.querySelectorAll('[data-question]')) {
+  chip.addEventListener('click', () => {
+    questionInput.value = chip.dataset.question;
+    ask(chip.dataset.question);
+  });
+}
+
+askForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const question = questionInput.value.trim();
+  if (question.length < 3) {
+    answer.textContent = 'Please type a question first.';
+    questionInput.focus();
+    return;
+  }
+  ask(question);
+});
+
+// Ctrl/Cmd + Enter submits a follow-up question from the textarea.
+questionInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) askForm.requestSubmit();
 });
