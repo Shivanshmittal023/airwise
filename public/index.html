@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AirWise — Urban Air Quality Assistant</title>
+  <meta name="description" content="Personalised, low-emission daily plans for families living through winter smog and urban air pollution.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/js/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <p class="brand"><span aria-hidden="true">🌫️</span> AirWise</p>
+      <p class="tagline">Breathe smarter through smog season</p>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <section class="card intro" aria-labelledby="form-title">
+      <h1 id="form-title">Get your family's clean-air plan</h1>
+      <p>Tell us where you are and how your household lives. AirWise combines live air-quality data and forecasts with your situation to suggest what to do today — and explains the real impact of each choice.</p>
+
+      <form id="profile-form" novalidate>
+        <fieldset>
+          <legend>Where are you?</legend>
+          <label for="city">City</label>
+          <div class="row">
+            <input id="city" name="city" type="text" autocomplete="address-level2" maxlength="80"
+                   placeholder="e.g. Delhi, Lahore, Beijing, Milan" aria-describedby="city-hint city-error">
+            <button type="button" id="locate-btn" class="btn secondary">Use my location</button>
+          </div>
+          <p id="city-hint" class="hint">Your location is only used to fetch air data. It is rounded to about 1&nbsp;km and never stored.</p>
+          <p id="city-error" class="field-error" hidden></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Who is in your household?</legend>
+          <p class="hint" id="sens-hint">Select all that apply — sensitive groups get stronger protection advice.</p>
+          <div class="checks" aria-describedby="sens-hint">
+            <label class="check"><input type="checkbox" name="sensitivities" value="children"> Children</label>
+            <label class="check"><input type="checkbox" name="sensitivities" value="elderly"> Older adults (65+)</label>
+            <label class="check"><input type="checkbox" name="sensitivities" value="respiratory"> Asthma / lung condition</label>
+            <label class="check"><input type="checkbox" name="sensitivities" value="cardiac"> Heart condition</label>
+            <label class="check"><input type="checkbox" name="sensitivities" value="pregnancy"> Pregnancy</label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Daily commute</legend>
+          <div class="grid-2">
+            <div>
+              <label for="commuteMode">Main way you travel</label>
+              <select id="commuteMode" name="commuteMode">
+                <option value="car">Car (solo)</option>
+                <option value="carpool">Car (shared)</option>
+                <option value="motorbike">Motorbike / scooter</option>
+                <option value="bus">Bus</option>
+                <option value="metro">Metro / train</option>
+                <option value="bicycle">Bicycle</option>
+                <option value="walk">Walking</option>
+                <option value="remote" selected>Work / study from home</option>
+              </select>
+            </div>
+            <div>
+              <label for="commuteKm">One-way distance (km)</label>
+              <input id="commuteKm" name="commuteKm" type="number" inputmode="decimal" min="0" max="200" step="0.5" value="0">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Your home</legend>
+          <div class="grid-2">
+            <div>
+              <label for="heating">Winter heating</label>
+              <select id="heating" name="heating">
+                <option value="none" selected>None</option>
+                <option value="wood">Wood stove / open fire</option>
+                <option value="coal">Coal stove</option>
+                <option value="kerosene">Kerosene heater</option>
+                <option value="gas">Gas heater</option>
+                <option value="electric">Electric heater</option>
+                <option value="heat_pump">Heat pump / inverter AC</option>
+              </select>
+            </div>
+            <div>
+              <label for="cooking">Cooking fuel</label>
+              <select id="cooking" name="cooking">
+                <option value="gas" selected>LPG / piped gas</option>
+                <option value="electric">Induction / electric</option>
+                <option value="kerosene">Kerosene</option>
+                <option value="biomass">Wood / biomass</option>
+              </select>
+            </div>
+          </div>
+          <div class="checks">
+            <label class="check"><input type="checkbox" name="hasPurifier"> We have an air purifier</label>
+            <label class="check"><input type="checkbox" name="exercisesOutdoors"> Someone exercises outdoors</label>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn primary" id="submit-btn">Build my plan</button>
+        <p id="form-status" class="status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="results" class="results" aria-labelledby="results-title" tabindex="-1" hidden>
+      <h2 id="results-title">Your plan for <span id="place-name"></span></h2>
+
+      <div class="grid-2">
+        <article class="card aqi-card" aria-labelledby="aqi-heading">
+          <h3 id="aqi-heading">Air right now</h3>
+          <div class="aqi-badge" id="aqi-badge">
+            <span class="aqi-value" id="aqi-value"></span>
+            <span class="aqi-unit">US AQI</span>
+          </div>
+          <p class="aqi-category" id="aqi-category"></p>
+          <p class="risk" id="personal-risk"></p>
+          <p id="risk-explanation"></p>
+          <dl class="pollutants" id="pollutants"></dl>
+          <p class="meta" id="observed"></p>
+        </article>
+
+        <article class="card" aria-labelledby="summary-heading">
+          <h3 id="summary-heading">Your assistant's briefing</h3>
+          <p id="summary" class="prose"></p>
+          <p class="meta" id="summary-source"></p>
+        </article>
+      </div>
+
+      <article class="card" aria-labelledby="forecast-heading">
+        <h3 id="forecast-heading">Next 24 hours</h3>
+        <p class="hint">Bars show the forecast US AQI per hour. Cleanest daytime windows are outlined.</p>
+        <div id="forecast-chart" class="chart" role="img"></div>
+        <details>
+          <summary>Show forecast as a table</summary>
+          <table class="forecast-table">
+            <caption class="visually-hidden">Hourly forecast US AQI and PM2.5</caption>
+            <thead><tr><th scope="col">Time</th><th scope="col">US AQI</th><th scope="col">PM2.5 (µg/m³)</th></tr></thead>
+            <tbody id="forecast-rows"></tbody>
+          </table>
+        </details>
+      </article>
+
+      <article class="card" aria-labelledby="routine-heading">
+        <h3 id="routine-heading">Today's routine</h3>
+        <ul id="routine" class="plan-list"></ul>
+      </article>
+
+      <article class="card" aria-labelledby="indoor-heading">
+        <h3 id="indoor-heading">Indoor air hacks</h3>
+        <ul id="indoor" class="plan-list"></ul>
+      </article>
+
+      <article class="card" aria-labelledby="alt-heading">
+        <h3 id="alt-heading">Low-emission switches &amp; their impact</h3>
+        <ul id="alternatives" class="plan-list"></ul>
+      </article>
+
+      <article class="card" aria-labelledby="ask-heading">
+        <h3 id="ask-heading">Ask a follow-up</h3>
+        <form id="ask-form" novalidate>
+          <label for="question">Your question</label>
+          <textarea id="question" name="question" rows="3" maxlength="500"
+                    placeholder="e.g. Is it safe to take my toddler to the park this evening?" aria-describedby="question-hint"></textarea>
+          <p class="hint" id="question-hint">Up to 500 characters. Answers are based on today's data for your location.</p>
+          <button type="submit" class="btn primary" id="ask-btn">Ask</button>
+        </form>
+        <div id="answer" class="answer prose" role="status" aria-live="polite"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Air data: <a href="https://open-meteo.com/en/docs/air-quality-api" rel="noopener noreferrer">Open-Meteo</a> (Copernicus CAMS). Impact figures are indicative estimates.</p>
+      <p>AirWise gives general guidance, not medical advice. If you have symptoms, contact a healthcare professional.</p>
+    </div>
+  </footer>
+</body>
+</html>
