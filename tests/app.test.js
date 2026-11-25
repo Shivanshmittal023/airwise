@@ -125,6 +125,14 @@ describe('HTTP API', () => {
     assert.equal(revalidated.status, 304);
   });
 
+  it('forces CSS and JS to revalidate so deploys never mix old and new files', async () => {
+    for (const p of ['/', '/styles.css', '/js/main.js', '/js/render.js', '/js/format.js']) {
+      const res = await fetch(`${ctx.base}${p}`);
+      assert.equal(res.headers.get('cache-control'), 'no-cache', p);
+      assert.ok(res.headers.get('etag'), p);
+    }
+  });
+
   it('never serves files outside the public directory', async () => {
     for (const p of ['/../package.json', '/%2e%2e/server.js', '/src/config.js', '/.env']) {
       assert.equal((await fetch(`${ctx.base}${p}`)).status, 404, p);

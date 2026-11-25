@@ -20,6 +20,12 @@ const MIME_TYPES = Object.freeze({
   '.txt': 'text/plain; charset=utf-8',
 });
 const COMPRESSIBLE = new Set(['.html', '.css', '.js', '.svg', '.json', '.webmanifest', '.txt']);
+/**
+ * Code and markup must always revalidate: after a deploy, a browser that mixes
+ * new HTML with stale cached CSS/JS renders a broken page. ETags make the
+ * revalidation a cheap 304. Only images may be cached for a day.
+ */
+const ALWAYS_REVALIDATE = new Set(['.html', '.css', '.js', '.json', '.webmanifest', '.txt']);
 
 /** @param {string} rootDir */
 export async function loadStaticAssets(rootDir) {
@@ -42,7 +48,7 @@ export async function loadStaticAssets(rootDir) {
       gzip: gzip && gzip.length < body.length ? gzip : null,
       type,
       etag: `"${createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`,
-      cacheControl: ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+      cacheControl: ALWAYS_REVALIDATE.has(ext) ? 'no-cache' : 'public, max-age=86400',
     });
   }
 
