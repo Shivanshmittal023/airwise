@@ -161,16 +161,18 @@ describe('loadConfig', () => {
   it('applies safe defaults and validates values', () => {
     const config = loadConfig({ PORT: 'abc', GEMINI_MODEL: 'bad model/../', RATE_LIMIT_PER_MINUTE: '-5' });
     assert.equal(config.port, 8080);
-    assert.equal(config.geminiModel, 'gemini-2.5-flash');
+    assert.equal(config.geminiModel, 'gemini-3.8-flash');
+    assert.deepEqual(config.geminiModels, ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest']);
     assert.equal(config.rateLimit.max, 30);
     assert.equal(config.geminiApiKey, '');
   });
 
   it('reads provided values', () => {
-    const config = loadConfig({ PORT: '3000', GEMINI_API_KEY: ' key ', GEMINI_MODEL: 'gemini-2.5-pro', TRUST_PROXY: 'true' });
+    const config = loadConfig({ PORT: '3000', GEMINI_API_KEY: ' key ', GEMINI_MODEL: 'gemini-2.5-pro', GEMINI_FALLBACK_MODELS: 'gemini-2.5-pro, bad/model, gemini-x', TRUST_PROXY: 'true' });
     assert.equal(config.port, 3000);
     assert.equal(config.geminiApiKey, 'key');
     assert.equal(config.geminiModel, 'gemini-2.5-pro');
+    assert.deepEqual(config.geminiModels, ['gemini-2.5-pro', 'gemini-x'], 'deduplicated and sanitised');
     assert.equal(config.trustProxy, true);
   });
 });

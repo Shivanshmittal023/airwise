@@ -14,7 +14,7 @@ const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'publi
 
 const app = createApp({
   airService: createAirService({ timeoutMs: config.upstreamTimeoutMs, cacheTtlMs: config.cacheTtlMs }),
-  assistant: createAssistant({ apiKey: config.geminiApiKey, model: config.geminiModel, timeoutMs: config.aiTimeoutMs }),
+  assistant: createAssistant({ apiKey: config.geminiApiKey, models: config.geminiModels, timeoutMs: config.aiTimeoutMs }),
   rateLimiter: createRateLimiter(config.rateLimit),
   assets: await loadStaticAssets(publicDir),
   trustProxy: config.trustProxy,
@@ -26,7 +26,7 @@ server.headersTimeout = 10_000;
 server.requestTimeout = 30_000;
 
 server.listen(config.port, () => {
-  const ai = config.geminiApiKey ? `Gemini (${config.geminiModel})` : 'rule-based fallback (no GEMINI_API_KEY)';
+  const ai = config.geminiApiKey ? `Gemini (${config.geminiModels.join(' → ')})` : 'rule-based fallback (no GEMINI_API_KEY)';
   console.log(`AirWise listening on http://localhost:${config.port} — assistant: ${ai}`);
 });
 

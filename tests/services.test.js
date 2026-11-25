@@ -150,7 +150,7 @@ describe('createAssistant', () => {
     const assistant = createAssistant({ apiKey: 'test-key', model: 'gemini-test', fetchImpl, logger: silentLogger });
     const result = await assistant.answer({ ...input, question: 'Can my kids play outside?' });
 
-    assert.deepEqual(result, { text: 'Stay safe today', source: 'gemini' });
+    assert.deepEqual(result, { text: 'Stay safe today', source: 'gemini', model: 'gemini-test' });
     assert.match(request.url, /models\/gemini-test:generateContent$/);
     assert.equal(request.options.headers['x-goog-api-key'], 'test-key');
     assert.ok(!request.url.includes('test-key'), 'API key must not be in the URL');
@@ -169,6 +169,35 @@ describe('createAssistant', () => {
       assert.equal(result.source, 'rules');
       assert.match(result.text, /N95/);
     }
+  });
+
+  it('tries backup models when the primary is retired or overloaded', async () => {
+    const tried = [];
+    const fetchImpl = async (url) => {
+      tried.push(url.match(/models\/([^:]+)/)[1]);
+      if (url.includes('primary')) return jsonResponse({ error: { message: 'no longer available' } }, 404);
+      if (url.includes('busy')) return jsonResponse({ error: { message: 'high demand' } }, 503);
+      return jsonResponse({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] });
+    };
+    const assistant = createAssistant({ apiKey: 'k', models: ['primary', 'busy', 'backup'], fetchImpl, logger: silentLogger });
+    const result = await assistant.summarize(input);
+    assert.deepEqual(tried, ['primary', 'busy', 'backup']);
+    assert.deepEqual(result, { text: 'ok', source: 'gemini', model: 'backup' });
+  });
+
+  it('stops immediately on non-retryable errors such as an invalid key', async () => {
+    const tried = [];
+    const warnings = [];
+    const fetchImpl = async (url) => {
+      tried.push(url);
+      return jsonResponse({ error: { message: 'API key not valid' } }, 400);
+    };
+    const assistant = createAssistant({ apiKey: 'bad', models: ['a', 'b'], fetchImpl, logger: { warn: (m) => warnings.push(m) } });
+    const result = await assistant.summarize(input);
+    assert.equal(tried.length, 1);
+    assert.equal(result.source, 'rules');
+    assert.match(warnings[0], /HTTP 400: API key not valid/);
+    assert.doesNotMatch(warnings[0], /bad"/);
   });
 
   it('gives a helpful generic answer to unrelated questions without AI', async () => {

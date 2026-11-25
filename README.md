@@ -34,7 +34,8 @@ Node.js server ── validation ── rate limit ── security headers
    │     5. buildAlternatives: commute/heating/cooking switches with CO₂ & PM2.5 impact
    │
    └─► Gemini (REST) receives a compact JSON context and writes the briefing or answer
-         └─ falls back to rule-based text if there is no key, a timeout or an error
+         ├─ tries backup models (GEMINI_FALLBACK_MODELS) if the primary is overloaded or retired
+         └─ falls back to rule-based text if there is no key or no model responds
 ```
 
 ### Key decision rules
@@ -79,7 +80,7 @@ Without a `GEMINI_API_KEY` the app still works fully. Briefings and answers then
 
 ```bash
 gcloud run deploy airwise --source . --region asia-south1 --allow-unauthenticated \
-  --set-env-vars TRUST_PROXY=true,GEMINI_MODEL=gemini-2.5-flash \
+  --set-env-vars TRUST_PROXY=true,GEMINI_MODEL=gemini-3.8-flash \
   --set-secrets GEMINI_API_KEY=gemini-api-key:latest
 ```
 
