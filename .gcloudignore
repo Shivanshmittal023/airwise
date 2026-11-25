@@ -1,0 +1,12 @@
+# Files never uploaded to Cloud Build
+.gcloudignore
+.git
+.gitignore
+.github/
+.env
+.env.*
+node_modules/
+tests/
+coverage/
+*.md
+.DS_Store
